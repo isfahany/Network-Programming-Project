@@ -68,7 +68,7 @@ def login(conn):
     password = password.split()
     password = encrypt_string(str(password[1]))
     for line in open("accountfile.txt","r").readlines(): # Read the lines
-        account_info = line.split(':')
+        account_info = line.split()
         if user == account_info[0] and password == account_info[1]:
             print("Correct credentials!")
             send_cmd("230 User " + username + " Logged in.", conn)
