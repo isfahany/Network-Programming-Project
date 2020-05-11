@@ -35,7 +35,7 @@ def LIST(conn, data_addr, data_port):
         print(ls)
         item = ""
         for i in ls:
-            item += i
+            item += i + "\r\n"
         item = item[:-2]
         item = item.encode()
         data_sock.send(item)
