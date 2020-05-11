@@ -5,7 +5,6 @@ import socket
 import threading
 import os
 import sys
-import hashlib
 
 socket_cmd = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 portCMD = 21
@@ -54,25 +53,17 @@ def PORT(conn, command):
         ex421(conn)
     return data_addr, data_port
 
-def encrypt_string(hash_string):
-    enc = hashlib.sha256(hash_string.encode()).hexdigest()
-    return enc
-
 def login(conn):
     send_cmd("220 FTPproject v1.0", conn)
     username = recv_cmd(conn)
     send_cmd("331 Please specify the password.", conn)
     password = recv_cmd(conn)
     user = username.split()
-    user = str(user[1])
+    user = str(username[1])
     password = password.split()
-    password = encrypt_string(str(password[1]))
-    for line in open("accountfile.txt","r").readlines(): # Read the lines
-        account_info = line.split(':')
-        if user == account_info[0] and password == account_info[1]:
-            print("Correct credentials!")
-            send_cmd("230 User " + username + " Logged in.", conn)
-            SYSTcomm = recv_cmd(conn)
+    send_cmd("230 User " + username + " Logged in.", conn)
+    SYSTcomm = recv_cmd(conn)
+    print (SYSTcomm)
 
 def conn_threading(conn):
     login(conn)
