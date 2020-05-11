@@ -12,9 +12,9 @@ def login():
     for line in open("accountfile.txt","r").readlines(): # Read the lines
         login_info = line.split(':')
         if username == login_info[0] and password == login_info[1]:
-            print("Correct credentials!")
+            print("Berhasil Login!")
             return True
-    print("Incorrect credentials.")
+    print("Password atau Username salah!")
     return False
 
 while True:
