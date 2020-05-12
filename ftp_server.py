@@ -16,6 +16,8 @@ commandlist = ["USER", "QUIT", "PORT", "TYPE", "MODE", "STRU", "RETR", "STOR",
               "NOOP", "LIST", "SYST"]
 
 
+def QUIT(conn):
+    send_cmd("221 Goodbye.\r\n", conn)
 
 def ex421(conn):
     send_cmd("421 Command not working", conn)
@@ -26,6 +28,8 @@ def SYST(conn):
     except:
         ex421(conn)
 
+def NOOP(conn):
+    conn.send("200 Keep Alived.\r\n", conn)
 
 def LIST(conn, data_addr, data_port):
     try:
@@ -44,6 +48,16 @@ def LIST(conn, data_addr, data_port):
     except:
         ex421(conn)
 
+def RETR(conn, file_up, data_addr, data_port):
+    data_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    data_sock.connect((data_addr, data_port))
+    files = open(file_up, "rb")
+    data = files.read()
+    send_cmd("150 Opening Download data connection", conn)
+    data_sock.send(data)
+    data_sock.close()
+    send_cmd("226 Completed", conn)
+
 def PORT(conn, command):
     try:
         data = command[5:].split(",")
@@ -53,6 +67,14 @@ def PORT(conn, command):
     except:
         ex421(conn)
     return data_addr, data_port
+
+def PWD(conn):
+    path = os.getcwd()
+    send_cmd("257 "+ path, conn)
+
+def CDUP(conn):
+    os.chdir("..")
+    send_cmd("200 OK.",conn)
 
 def encrypt_string(hash_string):
     enc = hashlib.sha256(hash_string.encode()).hexdigest()
@@ -72,23 +94,36 @@ def login(conn):
         if user == account_info[0] and password == account_info[1]:
             print("Correct credentials!")
             send_cmd("230 User " + username + " Logged in.", conn)
-            SYSTcomm = recv_cmd(conn)
+            break
+        else:
+            send_cmd("230 User anonymous", conn)
+            break
 
 def conn_threading(conn):
     login(conn)
     while True:
         command = recv_cmd(conn)
         print(command)
-        if command == "SYST":
-            SYST(conn)
-        elif command == "QUIT":
+        if "SYST" in command:
+            print("syst is not available")
+            #SYST(conn)
+        elif "QUIT" in command:
             sys.exit()
-        elif command == "LIST":
-            LIST(conn)
         elif "PORT" in command:
             data_addr, data_port = PORT(conn, command)
         elif "LIST" in command:
             LIST(conn, data_addr, data_port)
+        elif "CDUP" in command:
+            CDUP(conn)
+        elif "PWD" in command:
+            PWD(conn)
+        elif "QUIT" in command:
+            QUIT(conn)
+        elif "NOOP" in command:
+            NOOP(conn)
+        elif "RETR" in command:
+            file_up = command[5:-2]
+            RETR(conn, file_up, data_addr, data_port)
         else:
             ex421(conn)
             continue
@@ -113,4 +148,3 @@ while True:
     connThread.start()
 
 socket_cmd.close()
-socket_data.close()
