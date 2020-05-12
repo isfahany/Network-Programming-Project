@@ -17,7 +17,10 @@ commandlist = ["USER", "QUIT", "PORT", "TYPE", "MODE", "STRU", "RETR", "STOR",
 
 
 def QUIT(conn):
-    send_cmd("221 Goodbye.\r\n", conn)
+    try:
+        send_cmd("221 Goodbye.", conn)
+    except:
+        send_cmd("421 Command not working", conn)
 
 def ex421(conn):
     send_cmd("421 Command not working", conn)
@@ -29,7 +32,17 @@ def SYST(conn):
         ex421(conn)
 
 def NOOP(conn):
-    conn.send("200 Keep Alived.\r\n", conn)
+    try:
+        conn.send("200 Keep Alived.\r\n", conn)
+    except:
+        ex421(conn)
+
+def CWD(conn, dir_cd):
+    try:
+        os.chdir(dir_cd)
+        send_cmd("250 Directory Changed", conn)
+    except:
+        ex421(conn)
 
 def LIST(conn, data_addr, data_port):
     try:
@@ -49,14 +62,17 @@ def LIST(conn, data_addr, data_port):
         ex421(conn)
 
 def RETR(conn, file_up, data_addr, data_port):
-    data_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    data_sock.connect((data_addr, data_port))
-    files = open(file_up, "rb")
-    data = files.read()
-    send_cmd("150 Opening Download data connection", conn)
-    data_sock.send(data)
-    data_sock.close()
-    send_cmd("226 Completed", conn)
+    try:
+        data_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        data_sock.connect((data_addr, data_port))
+        files = open(file_up, "rb")
+        data = files.read()
+        send_cmd("150 Opening Download data connection", conn)
+        data_sock.send(data)
+        data_sock.close()
+        send_cmd("226 Completed", conn)
+    except:
+        ex421(conn)
 
 def PORT(conn, command):
     try:
@@ -69,35 +85,46 @@ def PORT(conn, command):
     return data_addr, data_port
 
 def PWD(conn):
-    path = os.getcwd()
-    send_cmd("257 "+ path, conn)
+    try:
+        path = os.getcwd()
+        send_cmd("257 "+ path, conn)
+    except:
+        ex421(conn)
 
 def CDUP(conn):
-    os.chdir("..")
-    send_cmd("200 OK.",conn)
+    try:
+        os.chdir("..")
+        send_cmd("200 OK.",conn)
+    except:
+        ex421(conn)
 
 def encrypt_string(hash_string):
     enc = hashlib.sha256(hash_string.encode()).hexdigest()
     return enc
 
 def login(conn):
-    send_cmd("220 FTPproject v1.0", conn)
-    username = recv_cmd(conn)
-    send_cmd("331 Please specify the password.", conn)
-    password = recv_cmd(conn)
-    user = username.split()
-    user = str(user[1])
-    password = password.split()
-    password = encrypt_string(str(password[1]))
-    for line in open("accountfile.txt","r").readlines(): # Read the lines
-        account_info = line.split()
-        if user == account_info[0] and password == account_info[1]:
-            print("Correct credentials!")
-            send_cmd("230 User " + username + " Logged in.", conn)
-            break
-        else:
-            send_cmd("230 User anonymous", conn)
-            break
+    try:
+        send_cmd("220 FTPproject v1.0", conn)
+        username = recv_cmd(conn)
+        send_cmd("331 Please specify the password.", conn)
+        password = recv_cmd(conn)
+        print("uname & pass", username, password)
+        user = username.split()
+        user = str(user[1])
+        user = user[:-2]
+        password = password.split()
+        password = encrypt_string(str(password[1]))
+        for line in open("accountfile.txt", "r").readlines(): # Read the lines
+            account_info = line.split()
+            if user == account_info[0] and password == account_info[1]:
+                print("Correct credentials!")
+                send_cmd("230 User " + username + " Logged in.", conn)
+                break
+            else:
+                send_cmd("530 Login incorrect.", conn)
+                break
+    except:
+        send_cmd("530 Login incorrect.", conn)
 
 def conn_threading(conn):
     login(conn)
@@ -105,10 +132,11 @@ def conn_threading(conn):
         command = recv_cmd(conn)
         print(command)
         if "SYST" in command:
-            print("syst is not available")
-            #SYST(conn)
+            #print("syst is not available")
+            SYST(conn)
         elif "QUIT" in command:
-            sys.exit()
+            QUIT(conn)
+            break
         elif "PORT" in command:
             data_addr, data_port = PORT(conn, command)
         elif "LIST" in command:
@@ -124,6 +152,9 @@ def conn_threading(conn):
         elif "RETR" in command:
             file_up = command[5:-2]
             RETR(conn, file_up, data_addr, data_port)
+        elif "CWD" in command:
+            dir_cd = command[4:-2]
+            CWD(conn, dir_cd)
         else:
             ex421(conn)
             continue
